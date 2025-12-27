@@ -16,13 +16,16 @@ import SwiftUI
 
     @Published var isRunning = false
     @Published private(set) var availableWindows = [SCWindow]()
-    @Published var eyeProjectedInstance: TrackedInstance? = nil
-    @Published var eyeProjectorMode: EyeProjectorMode = .tall
-
+    @Published var ProjectedInstance: TrackedInstance? = nil
+    @Published var ProjectorMode: ProjectorMode = .tall
     // Dedicated eye projector capture that works regardless of utility mode
     private var eyeProjectorCapture: CaptureEngine? = nil
     private var eyeProjectorFilter: SCContentFilter? = nil
-
+    private var ecounterProjectorCapture: CaptureEngine? = nil
+    private var ecounterProjectorFilter: SCContentFilter? = nil
+    private var pieProjectorCapture: CaptureEngine? = nil
+    private var pieProjectorFilter: SCContentFilter? = nil
+    
     private var availableApps = [SCRunningApplication]()
     private var windowFilters: [CGWindowID: SCContentFilter] = [:]
 
@@ -43,13 +46,21 @@ import SwiftUI
     @AppSettings(\.personalize) private var personalize
 
     var needsRecordingPerms: Bool {
-        !behavior.utilityMode || Settings[\.utility].eyeProjectorEnabled
+        !behavior.utilityMode || Settings[\.utility].eyeProjectorEnabled || Settings[\.utility].ecounterProjectorEnabled || Settings[\.utility].pieProjectorEnabled
     }
 
     var needsEyeProjectorCapture: Bool {
         Settings[\.utility].eyeProjectorEnabled
     }
 
+    var needsECounterProjectorCapture: Bool {
+        Settings[\.utility].ecounterProjectorEnabled
+    }
+    
+    var needsPieProjectorCapture: Bool {
+        Settings[\.utility].pieProjectorEnabled
+    }
+    
     func startCapture() async {
         LogManager.shared.appendLog("Attempting to start screen capture...")
         guard needsRecordingPerms else {
@@ -65,17 +76,43 @@ import SwiftUI
 
     func startEyeProjectorCapture(
         for instance: TrackedInstance,
-        mode: EyeProjectorMode = .tall
+        mode: ProjectorMode = .tall
     ) async {
         guard needsEyeProjectorCapture else { return }
 
         // Always check permissions for eye projector capture
         guard await AlertManager.shared.checkScreenRecordingPermission() else { return }
 
-        eyeProjectorMode = mode
+        ProjectorMode = mode
         await setupEyeProjectorCapture(for: instance)
     }
 
+    func startECounterProjectorCapture(
+        for instance: TrackedInstance,
+        mode: ProjectorMode = .thin
+    ) async {
+        guard needsECounterProjectorCapture else { return }
+
+        // Always check permissions for eye projector capture
+        guard await AlertManager.shared.checkScreenRecordingPermission() else { return }
+
+        ProjectorMode = mode
+        await setupECounterProjectorCapture(for: instance)
+    }
+    
+    func startPieProjectorCapture(
+        for instance: TrackedInstance,
+        mode: ProjectorMode = .thin
+    ) async {
+        guard needsPieProjectorCapture else { return }
+
+        // Always check permissions for eye projector capture
+        guard await AlertManager.shared.checkScreenRecordingPermission() else { return }
+
+        ProjectorMode = mode
+        await setupPieProjectorCapture(for: instance)
+    }
+    
     var canRecord: Bool {
         get async {
             // Don't need to check permissions in utility mode
@@ -178,6 +215,12 @@ import SwiftUI
                             await MainActor.run {
                                 instance.stream.capturePreview.updateFrame(frame)
                             }
+                            await MainActor.run {
+                                instance.stream.capturePreviewTopLeft.updateFrame(frame)
+                            }
+                            await MainActor.run {
+                                instance.stream.capturePreviewBottomRight.updateFrame(frame)
+                            }
                         }
                     } catch let error {
                         logger.error("\(error.localizedDescription)")
@@ -218,6 +261,22 @@ import SwiftUI
         }
     }
 
+    func stopECounterProjectorCapture() async {
+        if let ecounterProjectorCapture = ecounterProjectorCapture {
+            await ecounterProjectorCapture.stopCapture(removeStreams: true)
+            self.ecounterProjectorCapture = nil
+            self.ecounterProjectorFilter = nil
+        }
+    }
+    
+    func stopPieProjectorCapture() async {
+        if let pieProjectorCapture = pieProjectorCapture {
+            await pieProjectorCapture.stopCapture(removeStreams: true)
+            self.pieProjectorCapture = nil
+            self.pieProjectorFilter = nil
+        }
+    }
+    
     func resumeCapture() async {
         guard !isRunning else {
             return
@@ -399,6 +458,208 @@ import SwiftUI
         }
 
         LogManager.shared.appendLog("Started eye projector capture for instance \(instance.pid)")
+    }
+    
+    private func setupECounterProjectorCapture(for instance: TrackedInstance) async {
+        // Stop any existing e counter projector capture
+        await stopECounterProjectorCapture()
+
+        // Attempt to reuse the stored filter for this instance to avoid the
+        // expensive window enumeration that occurs when starting the eye
+        // projector.
+        var filter: SCContentFilter?
+
+        if let windowID = instance.windowID,
+            let storedFilter = windowFilters[windowID]
+        {
+            filter = storedFilter
+        } else {
+            // Refresh available windows only if needed
+            await refreshAvailableContent()
+
+            guard
+                let window = availableWindows.first(where: {
+                    $0.owningApplication?.processID == instance.pid
+                })
+            else {
+                LogManager.shared.appendLog(
+                    "Could not find window for e counter projector instance \(instance.pid)"
+                )
+                return
+            }
+
+            let newFilter = SCContentFilter(desktopIndependentWindow: window)
+            windowFilters[window.windowID] = newFilter
+            instance.windowID = window.windowID
+            filter = newFilter
+        }
+
+        guard let filter else {
+            LogManager.shared.appendLog(
+                "Unable to setup filter for e counter projector instance \(instance.pid)"
+            )
+            return
+        }
+
+        // Use thin mode dimensions instead of actual window size
+//        let (Width, Height, _, _) = Settings[\.self].thinDimensions(for: instance)
+        let (Width, Height, _, _) = {
+            switch ProjectorMode {
+            case .thin:
+                return Settings[\.self].thinDimensions(for: instance)
+            case .tall:
+                return Settings[\.self].tallDimensions(for: instance)
+            }
+        }()
+        
+        LogManager.shared.appendLog("Starting E Counter Projector: dim:", Width, "x", Height)
+
+        let streamConfig = createStreamConfiguration(
+            width: Width,
+            height: Height
+        )
+        streamConfig.minimumFrameInterval = CMTime(
+            value: 1, timescale: CMTimeScale(30))
+
+
+        // Store the filter and create dedicated capture engine
+        ecounterProjectorFilter = filter
+        ecounterProjectorCapture = CaptureEngine()
+
+        // Update the instance's eye projector stream capture filter and rect with thin mode dimensions
+        instance.ecounterProjectorStream.captureFilter = filter
+        instance.ecounterProjectorStream.captureRect = CGSize(
+            width: Width,
+            height: Height
+        )
+
+        // Start the dedicated capture
+        guard let ecounterProjectorCapture = ecounterProjectorCapture else { return }
+
+        Task {
+            do {
+                for try await frame in ecounterProjectorCapture.startCapture(
+                    configuration: streamConfig, filter: filter
+                ) {
+                    await MainActor.run {
+                        instance.ecounterProjectorStream.capturePreviewTopLeft.updateFrame(frame)
+                    }
+                }
+            } catch let error {
+                logger.error("E counter projector capture error: \(error.localizedDescription)")
+                LogManager.shared.appendLog(
+                    "E counter projector stream error (\(instance.pid)):",
+                    error.localizedDescription
+                )
+
+                if let error = error as? SCStreamError {
+                    let streamError = StreamError(errorCode: error.errorCode)
+                    instance.ecounterProjectorStream.streamError = streamError
+                }
+            }
+        }
+
+        LogManager.shared.appendLog("Started e counter projector capture for instance \(instance.pid)")
+    }
+    
+    private func setupPieProjectorCapture(for instance: TrackedInstance) async {
+        // Stop any existing e counter projector capture
+        await stopPieProjectorCapture()
+
+        // Attempt to reuse the stored filter for this instance to avoid the
+        // expensive window enumeration that occurs when starting the eye
+        // projector.
+        var filter: SCContentFilter?
+
+        if let windowID = instance.windowID,
+            let storedFilter = windowFilters[windowID]
+        {
+            filter = storedFilter
+        } else {
+            // Refresh available windows only if needed
+            await refreshAvailableContent()
+
+            guard
+                let window = availableWindows.first(where: {
+                    $0.owningApplication?.processID == instance.pid
+                })
+            else {
+                LogManager.shared.appendLog(
+                    "Could not find window for pie projector instance \(instance.pid)"
+                )
+                return
+            }
+
+            let newFilter = SCContentFilter(desktopIndependentWindow: window)
+            windowFilters[window.windowID] = newFilter
+            instance.windowID = window.windowID
+            filter = newFilter
+        }
+
+        guard let filter else {
+            LogManager.shared.appendLog(
+                "Unable to setup filter for pie projector instance \(instance.pid)"
+            )
+            return
+        }
+//      use mode dimensions i guess
+        let (Width, Height, _, _) = {
+            switch ProjectorMode {
+            case .thin:
+                return Settings[\.self].thinDimensions(for: instance)
+            case .tall:
+                return Settings[\.self].tallDimensions(for: instance)
+            }
+        }()
+        
+        LogManager.shared.appendLog("Starting Pie Projector: dim:", Width, "x", Height)
+
+        let streamConfig = createStreamConfiguration(
+            width: Width,
+            height: Height
+        )
+        streamConfig.minimumFrameInterval = CMTime(
+            value: 1, timescale: CMTimeScale(30))
+
+
+        // Store the filter and create dedicated capture engine
+        pieProjectorFilter = filter
+        pieProjectorCapture = CaptureEngine()
+
+        // Update the instance's eye projector stream capture filter and rect with thin mode dimensions
+        instance.pieProjectorStream.captureFilter = filter
+        instance.pieProjectorStream.captureRect = CGSize(
+            width: Width,
+            height: Height
+        )
+
+        // Start the dedicated capture
+        guard let pieProjectorCapture = pieProjectorCapture else { return }
+
+        Task {
+            do {
+                for try await frame in pieProjectorCapture.startCapture(
+                    configuration: streamConfig, filter: filter
+                ) {
+                    await MainActor.run {
+                        instance.pieProjectorStream.capturePreviewBottomRight.updateFrame(frame)
+                    }
+                }
+            } catch let error {
+                logger.error("Pie projector capture error: \(error.localizedDescription)")
+                LogManager.shared.appendLog(
+                    "Pie projector stream error (\(instance.pid)):",
+                    error.localizedDescription
+                )
+
+                if let error = error as? SCStreamError {
+                    let streamError = StreamError(errorCode: error.errorCode)
+                    instance.pieProjectorStream.streamError = streamError
+                }
+            }
+        }
+
+        LogManager.shared.appendLog("Started pie projector capture for instance \(instance.pid)")
     }
 }
 

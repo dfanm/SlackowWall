@@ -22,6 +22,14 @@ class PreviewRenderer: ObservableObject, Manager {
     var capturePreview: some View {
         instance.stream.capturePreview
     }
+    
+    var capturePreviewTopLeft: some View{
+        instance.stream.capturePreviewTopLeft
+    }
+    
+    var capturePreviewBottomRight: some View{
+        instance.stream.capturePreviewBottomRight
+    }
 
     var captureRect: CGSize {
         let rect = instance.stream.captureRect

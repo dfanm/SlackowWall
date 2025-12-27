@@ -10,6 +10,8 @@ import SwiftUI
 
 class InstanceStream {
     var capturePreview: CapturePreview
+    var capturePreviewTopLeft: CapturePreviewTopLeft
+    var capturePreviewBottomRight: CapturePreviewBottomRight
     var captureFilter: SCContentFilter?
     var captureRect: CGSize
 
@@ -17,11 +19,15 @@ class InstanceStream {
 
     init() {
         self.capturePreview = CapturePreview()
+        self.capturePreviewTopLeft = CapturePreviewTopLeft()
+        self.capturePreviewBottomRight = CapturePreviewBottomRight()
         self.captureRect = .zero
     }
 
     func clearCapture() {
         capturePreview = CapturePreview()
+        capturePreviewTopLeft = CapturePreviewTopLeft()
+        capturePreviewBottomRight = CapturePreviewBottomRight()
         captureFilter = nil
         captureRect = .zero
         streamError = nil

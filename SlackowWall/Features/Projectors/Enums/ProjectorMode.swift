@@ -1,6 +1,6 @@
 import Foundation
 
-enum EyeProjectorMode {
+enum ProjectorMode {
     case tall
     case thin
 }

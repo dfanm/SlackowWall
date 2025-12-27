@@ -15,10 +15,22 @@ extension Preferences {
         var pacemanToolBarIcon: Bool = false
 
         var eyeProjectorEnabled: Bool = false
+        var ecounterProjectorEnabled: Bool = true
+        var pieProjectorEnabled: Bool = true
         var eyeProjectorOpenWithTallMode: Bool = true
+        var ecounterProjectorOpenWithTallMode: Bool = true
+        var pieProjectorOpenWithTallMode: Bool = true
+        
         var eyeProjectorShouldOpenWithTallMode: Bool {
             eyeProjectorEnabled && eyeProjectorOpenWithTallMode
         }
+        var ecounterProjectorShouldOpenWithTallMode: Bool {
+            ecounterProjectorEnabled && ecounterProjectorOpenWithTallMode
+        }
+        var pieProjectorShouldOpenWithTallMode: Bool {
+            pieProjectorEnabled && pieProjectorOpenWithTallMode
+        }
+        
         // this should no longer be used, but keeping in case it needs to be re-introduced
         private var eyeProjectorWidth: Int = 60
         var eyeProjectorHeightScale: Double = 0.2

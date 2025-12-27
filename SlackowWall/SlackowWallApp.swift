@@ -158,6 +158,26 @@ struct SlackowWallApp: App {
                 openWindow(id: "eye-projector-window")
             }
         }
+        Window("E Counter Projector", id: "e-counter-window") {
+            ECounterProjectorWindowView()
+                .frame(minWidth: 504, maxWidth: 504, minHeight: 99, maxHeight: 99)
+        }
+        .windowResizability(.contentSize)
+        .onChange(of: shortcutManager.ecounterProjectorOpen) { newValue in
+            if newValue {
+                openWindow(id: "e-counter-window")
+            }
+        }
+        Window("Pie Projector", id: "pie-projector-window") {
+            PieProjectorWindowView()
+                .frame(minWidth: 800, minHeight: 500)
+        }
+        .windowResizability(.contentSize)
+        .onChange(of: shortcutManager.pieProjectorOpen) { newValue in
+            if newValue {
+                openWindow(id: "pie-projector-window")
+            }
+        }
     }
 }
 
@@ -178,7 +198,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         OBSManager.shared.writeScript()
         MouseSensitivityManager.shared.setSensitivityFactor(
             factor: Settings[\.utility].sensitivityScale)
-#if !DEBUG
+//#if !DEBUG
         if Settings[\.utility].autoLaunchPaceman {
                 PacemanManager.shared.startPaceman()
         }
@@ -190,7 +210,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 try? task.run()
             }
         }
-#endif
+//#endif
         // Start the instance check timer
         TrackingManager.shared.startInstanceCheckTimer()
     }

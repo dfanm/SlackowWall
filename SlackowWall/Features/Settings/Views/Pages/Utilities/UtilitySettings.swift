@@ -64,14 +64,13 @@ struct UtilitySettings: View {
                             openWindow(id: "eye-projector-window")
                         }
                         .disabled(!settings.eyeProjectorEnabled)
-
+                        
                         Toggle("", isOn: $settings.eyeProjectorEnabled)
                             .labelsHidden()
                             .toggleStyle(.switch)
                             .controlSize(.small)
                             .tint(.accentColor)
                     }
-
                     Group {
                         Divider()
 
@@ -80,6 +79,7 @@ struct UtilitySettings: View {
                             option: $settings.eyeProjectorOpenWithTallMode
                         )
 
+                        
                         Divider()
 
                         HStack {
@@ -117,6 +117,70 @@ struct UtilitySettings: View {
                 }
             }
 
+            SettingsLabel(
+                title: "ECounter Projector",
+                description: """
+                    Settings for an automated ecounter projector.
+                    """
+            )
+            SettingsCardView {
+                VStack {
+                    HStack {
+                        SettingsLabel(title: "Enabled", font: .body)
+
+                        Button("Open") {
+                            openWindow(id: "e-counter-window")
+                        }
+                        .disabled(!settings.ecounterProjectorEnabled)
+                        
+                        Toggle("", isOn: $settings.ecounterProjectorEnabled)
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                            .controlSize(.small)
+                            .tint(.accentColor)
+                    }
+                    Divider()
+                    
+                    SettingsToggleView(
+                        title: "Open/Close With Tall Mode",
+                        option: $settings.ecounterProjectorOpenWithTallMode
+                    )
+
+                }
+            }
+            
+            SettingsLabel(
+                title: "Pie Projector",
+                description: """
+                    Settings for an automated pie projector.
+                    """
+            )
+            SettingsCardView {
+                VStack {
+                    HStack {
+                        SettingsLabel(title: "Enabled", font: .body)
+
+                        Button("Open") {
+                            openWindow(id: "pie-projector-window")
+                        }
+                        .disabled(!settings.pieProjectorEnabled)
+                        
+                        Toggle("", isOn: $settings.pieProjectorEnabled)
+                            .labelsHidden()
+                            .toggleStyle(.switch)
+                            .controlSize(.small)
+                            .tint(.accentColor)
+                    }
+                    Divider()
+                    
+                    SettingsToggleView(
+                        title: "Open/Close With Tall Mode",
+                        option: $settings.pieProjectorOpenWithTallMode
+                    )
+
+                }
+            }
+            
             SettingsLabel(
                 title: "Sensitivity Scaling",
                 description: """

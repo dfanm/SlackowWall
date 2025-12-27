@@ -64,7 +64,7 @@ struct ModeSettings: View {
             ModeCardView(
                 name: "Thin",
                 description: "Thin is generally used for buried treasures, preemptive, and/or e-ray.",
-                actualDimensions: Settings[\.self].thinDimensions,
+                actualDimensions: Settings[\.self].thinDimensions(for: TrackingManager.shared.trackedInstances.first),
                 keybind: $keybinds.thinGKey,
                 mode: $settings.thinMode
             )

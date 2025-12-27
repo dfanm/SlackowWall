@@ -18,6 +18,8 @@ class TrackedInstance: ObservableObject, Identifiable, Hashable, Equatable {
     let info: InstanceInfo
     var stream: InstanceStream
     var eyeProjectorStream: InstanceStream
+    var ecounterProjectorStream: InstanceStream
+    var pieProjectorStream: InstanceStream
 
     @Published var isLocked: Bool
     @Published var wasClosed: Bool
@@ -29,6 +31,8 @@ class TrackedInstance: ObservableObject, Identifiable, Hashable, Equatable {
         self.info = TrackedInstance.calculateInstanceInfo(pid: pid)
         self.stream = InstanceStream()
         self.eyeProjectorStream = InstanceStream()
+        self.ecounterProjectorStream = InstanceStream()
+        self.pieProjectorStream = InstanceStream()
         self.isLocked = false
         self.wasClosed = false
     }

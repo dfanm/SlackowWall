@@ -18,7 +18,7 @@ struct EyeProjectorWindowView: View {
             Text("Projector is disabled")
                 .font(.largeTitle.weight(.bold))
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-        } else if let instance = screenRecorder.eyeProjectedInstance {
+        } else if let instance = screenRecorder.ProjectedInstance {
             EyeProjectorView(instance: instance)
         } else {
             Text("No Tall Instance to Project")

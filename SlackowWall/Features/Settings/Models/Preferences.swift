@@ -40,13 +40,13 @@ extension Preferences {
         )
     }
 
-    var thinDimensions: (CGFloat, CGFloat?, CGFloat?, CGFloat?) {
+    func thinDimensions(for instance: TrackedInstance? = nil) -> (CGFloat, CGFloat, CGFloat?, CGFloat?) {
         let m = mode.thinMode
         let tm = mode.tallMode
         let bm = mode.baseMode
         return (
             m.width.cg ?? tm.width.cg ?? 384,
-            m.height.cg ?? bm.height.cg,
+            m.height.cg ?? bm.height.cg!,
             m.x.cg,
             m.y.cg
         )
